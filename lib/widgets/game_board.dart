@@ -10,7 +10,9 @@ class GameBoard extends StatefulWidget {
   State<GameBoard> createState() => _GameBoardState();
 }
 
-class _GameBoardState extends State<GameBoard> {
+class _GameBoardState extends State<GameBoard> with TickerProviderStateMixin {
+  final Set<int> _animatedCandies = {};
+  
   @override
   Widget build(BuildContext context) {
     return Consumer<GameProvider>(
@@ -39,53 +41,59 @@ class _GameBoardState extends State<GameBoard> {
                   // Create a list of all candies with their positions
                   final List<Widget> candyWidgets = [];
                   
+                  // Build all candy widgets
                   for (int row = 0; row < GameProvider.rows; row++) {
                     for (int col = 0; col < GameProvider.cols; col++) {
                       final candy = gameProvider.board[row][col];
                       if (candy != null) {
-                        candyWidgets.add(
-                          Positioned(
-                            key: ValueKey('candy_${candy.id}'),
-                            left: col * (cellSize + 4) + 4,
-                            top: row * (cellSize + 4) + 4,
-                            width: cellSize - 8,
-                            height: cellSize - 8,
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () {
-                                if (!gameProvider.isProcessing) {
-                                  gameProvider.selectCandy(row, col);
-                                }
+                        // Calculate positions
+                        final leftPosition = candy.col * (cellSize + 4) + 4;
+                        final topPosition = candy.row * (cellSize + 4) + 4;
+                        
+                        // Check if this is a new candy that needs falling animation
+                        final shouldFall = candy.isNew && !_animatedCandies.contains(candy.id);
+                        
+                        if (shouldFall) {
+                          _animatedCandies.add(candy.id);
+                          // Add falling animation
+                          candyWidgets.add(
+                            TweenAnimationBuilder<double>(
+                              key: ValueKey('candy_${candy.id}'),
+                              tween: Tween<double>(
+                                begin: -200.0, // Start from above
+                                end: topPosition,
+                              ),
+                              duration: const Duration(milliseconds: 1000),
+                              curve: Curves.easeOut,
+                              onEnd: () {
+                                candy.isNew = false;
                               },
-                              child: candy.isMarkedForRemoval
-                                  ? Container() // Empty container for removed candies
-                                  : Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: gameProvider.selectedCandy?.id == candy.id
-                                              ? Colors.yellow.shade600
-                                              : Colors.transparent,
-                                          width: gameProvider.selectedCandy?.id == candy.id ? 3 : 0,
-                                        ),
-                                        boxShadow: gameProvider.selectedCandy?.id == candy.id
-                                            ? [
-                                                BoxShadow(
-                                                  color: Colors.yellow.withOpacity(0.5),
-                                                  blurRadius: 10,
-                                                  spreadRadius: 2,
-                                                ),
-                                              ]
-                                            : null,
-                                      ),
-                                      child: Transform.scale(
-                                        scale: gameProvider.selectedCandy?.id == candy.id ? 1.15 : 1.0,
-                                        child: _buildCandyContent(candy),
-                                      ),
-                                    ),
+                              builder: (context, animatedTop, _) {
+                                return Positioned(
+                                  left: leftPosition,
+                                  top: animatedTop,
+                                  width: cellSize - 8,
+                                  height: cellSize - 8,
+                                  child: _buildCandyWidget(candy, gameProvider, row, col),
+                                );
+                              },
                             ),
-                          ),
-                        );
+                          );
+                        } else {
+                          // Regular candies with movement animation
+                          candyWidgets.add(
+                            AnimatedPositioned(
+                              key: ValueKey('candy_${candy.id}'),
+                              duration: const Duration(milliseconds: 1000),
+                              curve: Curves.easeInOut,
+                              left: leftPosition,
+                              top: topPosition,
+                              width: cellSize - 8,
+                              height: cellSize - 8,
+                              child: _buildCandyWidget(candy, gameProvider, row, col),
+                            ),
+                          );
+                        }
                       }
                     }
                   }
@@ -125,6 +133,43 @@ class _GameBoardState extends State<GameBoard> {
     );
   }
 
+  Widget _buildCandyWidget(Candy candy, GameProvider gameProvider, int row, int col) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        if (!gameProvider.isProcessing) {
+          gameProvider.selectCandy(row, col);
+        }
+      },
+      child: candy.isMarkedForRemoval
+          ? Container()
+          : Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: gameProvider.selectedCandy?.id == candy.id
+                      ? Colors.yellow.shade600
+                      : Colors.transparent,
+                  width: gameProvider.selectedCandy?.id == candy.id ? 3 : 0,
+                ),
+                boxShadow: gameProvider.selectedCandy?.id == candy.id
+                    ? [
+                        BoxShadow(
+                          color: Colors.yellow.withOpacity(0.5),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Transform.scale(
+                scale: gameProvider.selectedCandy?.id == candy.id ? 1.15 : 1.0,
+                child: _buildCandyContent(candy),
+              ),
+            ),
+    );
+  }
+
   Widget _buildCandyContent(Candy candy) {
     return Container(
       decoration: BoxDecoration(
@@ -155,5 +200,4 @@ class _GameBoardState extends State<GameBoard> {
       ),
     );
   }
-
 }

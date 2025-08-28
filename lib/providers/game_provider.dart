@@ -155,7 +155,7 @@ class GameProvider extends ChangeNotifier {
     
     notifyListeners();
     
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 1000));
     
     if (!hasMatches()) {
       final temp = _board[candy1.row][candy1.col];
@@ -170,7 +170,7 @@ class GameProvider extends ChangeNotifier {
       candy2.col = tempCol;
       
       notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 1000));
     } else {
       _moves--;
       await _processMatchesWithAnimation();
@@ -215,7 +215,7 @@ class GameProvider extends ChangeNotifier {
       
       _fillEmptySpaces();
       notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 400));
+      await Future.delayed(const Duration(milliseconds: 1000)); // Wait for new candies to fall
     }
   }
   
@@ -286,7 +286,7 @@ class GameProvider extends ChangeNotifier {
     }
     if (dropped) {
       notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 1000));
     }
   }
   
